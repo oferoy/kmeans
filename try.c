@@ -12,6 +12,8 @@ gcc -ansi -Wall -Wextra -Werror -pedantic-errors try.c -o try -lm
 #define DEFAULT_ITERS_NUM (200)
 #define MAX_ITERS_NUM (1000)
 
+
+
 struct cord
 {
     double value;
@@ -41,6 +43,59 @@ double dist(struct vector *p1, struct vector *p2, int dim){
     return sqrt(distance);
 }
 
+int isInteger(const char *str) {
+    if (str == NULL || *str == '\0') {
+        return 0;
+    }
+    if (*str == '-') {
+        str++;
+    }
+    while (*str != '\0') {
+        if (*str < '0' || *str > '9') {
+            return 0;
+        }
+        str++;
+    }
+    return 1;
+}
+
+void free_cords(struct cord *head) {
+    struct cord *temp;
+    while (head != NULL) {
+        temp = head;
+        head = head->next;
+        free(temp);
+    }
+}
+
+void free_vectors(struct vector *head) {
+    struct vector *temp;
+    while (head != NULL) {
+        temp = head;
+        head = head->next;
+        free_cords(temp->cords);
+        free(temp);
+    }
+}
+
+void free_centroids(struct vector *centroidsArr, int clustersNum) {
+    int i;
+    for (i = 0; i < clustersNum; i++) {
+        free_cords(centroidsArr[i].cords);
+    }
+    free(centroidsArr);
+}
+
+void free_countArr(int *countArr) {
+    free(countArr);
+}
+
+void free_all_memory(struct vector *head_vec, struct vector *centroidsArr, struct vector *newCentroidsArr, int *countArr, int clustersNum) {
+    free_vectors(head_vec);
+    free_centroids(centroidsArr, clustersNum);
+    free_centroids(newCentroidsArr, clustersNum);
+    free_countArr(countArr);
+}
 
 
 int main(int argc, char **argv) {
@@ -64,9 +119,37 @@ int main(int argc, char **argv) {
     int closestCentIndex = 0;
     double minDist;
     double curDist;
-
-    (void)argc;
-
+    int smallerThanEps;
+   
+     /* gets the number of clusters and checks if it is valid*/
+    if(argc == 3)
+    {
+        if(isInteger(argv[2])){
+            itersNum = atoi(argv[2]); 
+        }
+        else{
+        printf("Invalid maximum iteration!");
+        return 1;
+        }
+    }
+    else if (argc == 2)
+    {
+        itersNum = DEFAULT_ITERS_NUM;
+    }
+    else
+    {
+        printf("An Error Has Occurred");
+        return 1;
+    }
+    if(isInteger(argv[1])){
+        clustersNum = atoi(argv[1]);
+    }
+    else
+    {
+        printf("Invalid number of clusters!");
+        return 1;
+    }
+    
     head_cord = malloc(sizeof(struct cord));
     curr_cord = head_cord;
     curr_cord->next = NULL;
@@ -77,16 +160,10 @@ int main(int argc, char **argv) {
 
     
 
-
-   
-     /* gets the number of clusters and checks if it is valid*/
-    clustersNum = atoi(argv[1]);
-    itersNum = atoi(argv[2]); 
-
     if(itersNum <= 1 || itersNum >= MAX_ITERS_NUM)
     {
         printf("Invalid maximum iteration!");
-        return -1;
+        return 1;
     }
     
     while (scanf("%lf%c", &n, &c) == 2)
@@ -114,6 +191,12 @@ int main(int argc, char **argv) {
         
     }
 
+    if(clustersNum<=1 || clustersNum >= numOfPoints)
+    {
+        printf("Invalid number of clusters!");
+        return 1;
+    }
+
     curr_vec = head_vec;
     curr_cord = curr_vec->cords;
 
@@ -122,10 +205,22 @@ int main(int argc, char **argv) {
     centroidsArr = malloc(sizeof(struct vector) * clustersNum);
     newCentroidsArr = malloc(sizeof(struct vector) * clustersNum);
 
+    tempVec =  malloc(sizeof(struct vector));
     /*initialize centroidsArr*/
     for(i = 0; i < clustersNum; i++){
-        centroidsArr[i] = *curr_vec;
+        tempCord = malloc(sizeof(struct cord));
+        tempVec->cords = tempCord;
+        curr_cord = curr_vec->cords;
+        for(j = 0; j < dimension; j++){
+            tempCord->value = curr_cord->value;
+            tempCord->next = malloc(sizeof(struct cord));
+            curr_cord = curr_cord->next;
+            tempCord = tempCord->next;
+        }
+        centroidsArr[i] = *tempVec;
+        tempVec->next = malloc(sizeof(struct vector));
         curr_vec = curr_vec->next;
+        tempVec = tempVec->next;
     }
 
     /*initialize newCentroidsArr*/
@@ -150,7 +245,7 @@ int main(int argc, char **argv) {
     countArr = malloc(sizeof(int) * clustersNum);
 
     /*main algorithm*/
-    for(i = 0; i < 8; i++){
+    for(i = 0; i < itersNum; i++){
         /*reset newCentroidsArr to all zeros*/
         for(j = 0; j < clustersNum; j++){
             curr_vec = &newCentroidsArr[j];
@@ -161,14 +256,11 @@ int main(int argc, char **argv) {
             }
         }
 
-        
-
         /*reset countArr to zeros*/
         for(j = 0; j < clustersNum; j++){
             countArr[j] = 0;
         }
         curr_vec = head_vec;
-        k = 0; 
         /*loop through the points and assign each one to closest centroid*/
         while(hasNext(curr_vec) == 1)
         {
@@ -196,9 +288,9 @@ int main(int argc, char **argv) {
             }
 
             curr_vec = curr_vec->next;
-            k++;
-            
         }
+    
+
         /*divide the sum of the values of newCentroidsArr by the number of points assigned to the centroid*/
         for(j = 0; j < clustersNum; j++)
         {
@@ -211,6 +303,22 @@ int main(int argc, char **argv) {
             }
         }
         
+
+        smallerThanEps = 1;
+        for(j = 0; j < clustersNum; j++)
+        {
+            if(fabs(dist(&newCentroidsArr[j], &centroidsArr[j], dimension)) >= EPSILON)
+            {
+                smallerThanEps =0;
+            }
+        }
+        if(smallerThanEps == 1)
+        {
+            break;
+        }
+
+
+
         for (j = 0; j < clustersNum; j++){
             tempVec = &newCentroidsArr[j];
             tempCord = tempVec->cords;
@@ -223,42 +331,27 @@ int main(int argc, char **argv) {
             }
         }
         
-
-        
     }
-    printf("%d\n", countArr[0]);
-    printf("%d\n", countArr[1]);
-    printf("%d\n", countArr[2]);
-    printf("%f\n", centroidsArr[0].cords->value);
-    printf("%f\n", centroidsArr[0].cords->next->value);
-    printf("%f\n", centroidsArr[1].cords->value);
-    printf("%f\n", centroidsArr[1].cords->next->value);
-    printf("%f\n", centroidsArr[2].cords->value);
-    printf("%f\n", centroidsArr[2].cords->next->value);
-    
-    
-    j = 0;
-    curr_vec = head_vec;
-    curr_cord = curr_vec->cords;
-    
+
+    for(i = 0; i < clustersNum; i++){
+        tempVec = &centroidsArr[i];
+        tempCord = tempVec->cords;
+        for(j = 0; j < dimension; j++){
+            printf("%.4f", tempCord->value);
+            if(j != dimension - 1){
+                printf(",");
+            }
+            else
+            {
+                printf("\n");   
+            }
+            tempCord = tempCord->next;
+        }
+    }
+
+    free_all_memory(head_vec, centroidsArr, newCentroidsArr, countArr, clustersNum);
+
 
     return 0;
-
-    
-
-    printf("%f", centroidsArr[0].cords->value);
-    printf("%f", curr_cord->value);
-    
-
-
-
-
-    /*checks if the number of clusters is valid*/
-    if(clustersNum <= 1 || clustersNum >= 100)
-    {
-        printf("Invalid number of clusters!");
-        return -1;
-    }
-
     
 }
