@@ -1,10 +1,41 @@
 import sys
 import math
 
-k = int(sys.argv[1])
-iter = int(sys.argv[2])
-pointsFile = sys.argv[3]
+
 EPSILON = 0.001
+MAX_ITERS_NUM = 1000
+DEFAULT_ITERS_NUM = 200
+
+
+
+argc = len(sys.argv)
+if argc == 4:
+    try:
+        iter = int(sys.argv[2])
+    except:
+        print("Invalid maximum iteration!")
+        exit()
+    pointsFile = sys.argv[3]
+elif argc == 3:
+    iter = DEFAULT_ITERS_NUM
+    pointsFile = sys.argv[2]
+else:
+    print("An Error Has Occurred")
+    exit()
+
+
+try:
+    k = int(sys.argv[1])
+except:
+    print("Invalid number of clusters!")
+    exit()
+
+
+
+if iter <= 1 or iter >= MAX_ITERS_NUM:
+    print("Invalid maximum iteration!")
+    exit()
+
 
 pointsArr = []
 with open(pointsFile, "r") as file:
@@ -14,6 +45,11 @@ with open(pointsFile, "r") as file:
 
 numOfPoints = len(pointsArr)
 dimension = len(pointsArr[0])
+
+if(k <= 1 or k >= numOfPoints):
+    print("Invalid number of clusters!")
+    exit()
+
 
 centroidsArr = []
 for i in range(k):
@@ -28,7 +64,7 @@ def dist(p1, p2):
 
 for it in range(iter):
     newCentroids = [[0.0] * dimension for _ in range(k)]
-
+    
     countArr =[0]
     for i in range(k-1):
         countArr.append(0)
@@ -63,8 +99,12 @@ for it in range(iter):
     centroidsArr = newCentroids
     
 
-for centroid in centroidsArr:
-    print([round(val, 4) for val in centroid])
-    
+
+for c in range(k):
+    for d in range(dimension - 1):
+        print(f"{round(centroidsArr[c][d],4)},", end="")
+    print(round(centroidsArr[c][dimension - 1],4))
+
+  
 
         
