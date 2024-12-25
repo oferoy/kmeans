@@ -1,7 +1,7 @@
 /*
 gcc -ansi -Wall -Wextra -Werror -pedantic-errors kmeans.c -o kmeans -lm
 ./kmeans 15 100 < input_3.txt
-valgrind --leak-check=full --track-origins=yes ./kmeans 3 1000 < input_1.txt
+valgrind --leak-check=full --track-origins=yes ./kmeans 15 < input_3.txt
 */
 
 # include <stdio.h>
@@ -134,10 +134,19 @@ int main(int argc, char **argv) {
     }
     
     head_cord = malloc(sizeof(struct cord));
+    if(head_cord == NULL){
+        printf("An Error Has Occurred");
+        return 1;
+    }
     curr_cord = head_cord;
     curr_cord->next = NULL;
     
     head_vec = malloc(sizeof(struct vector));
+    if(head_cord == NULL){
+        free(head_cord);
+        printf("An Error Has Occurred");
+        return 1;
+    }
     curr_vec = head_vec;
     curr_vec->next = NULL;
 
@@ -160,9 +169,20 @@ int main(int argc, char **argv) {
             curr_cord->value = n;
             curr_vec->cords = head_cord;
             curr_vec->next = malloc(sizeof(struct vector));
+            if(curr_vec->next == NULL){
+                free(head_cord);
+                free_vectors(head_vec);
+                printf("An Error Has Occurred");
+                return 1;
+            }
             curr_vec = curr_vec->next;
             curr_vec->next = NULL;
             head_cord = malloc(sizeof(struct cord));
+            if(head_cord == NULL){
+                free_vectors(head_vec);
+                printf("An Error Has Occurred");
+                return 1;
+            }
             curr_cord = head_cord;
             curr_cord->next = NULL;
             numOfPoints++;
@@ -171,8 +191,15 @@ int main(int argc, char **argv) {
 
         curr_cord->value = n;
         curr_cord->next = malloc(sizeof(struct cord));
+        if(curr_cord->next == NULL){
+            free(head_cord);
+            free_vectors(head_vec);
+            printf("An Error Has Occurred");
+            return 1;
+        }
         curr_cord = curr_cord->next;
         curr_cord->next = NULL;
+        
         
     }
 
@@ -191,10 +218,48 @@ int main(int argc, char **argv) {
     dimension = numOfCords / numOfPoints;
 
     centroidsArr = (double **)malloc(clustersNum * sizeof(double *));
+    if(centroidsArr == NULL){
+        free(head_cord);
+        free_vectors(head_vec);
+        printf("An Error Has Occurred");
+        return 1;
+    }
     newCentroidsArr = (double **)malloc(clustersNum * sizeof(double *));
+    if(newCentroidsArr == NULL){
+        free(centroidsArr);
+        free(head_cord);
+        free_vectors(head_vec);
+        printf("An Error Has Occurred");
+        return 1;
+    }
     for (i = 0; i < clustersNum; i++) {
         centroidsArr[i] = (double *)malloc(dimension * sizeof(double));
+        if(centroidsArr[i] == NULL){
+            for (j = 0; j < i; j++) {
+                free(centroidsArr[j]);
+                free(newCentroidsArr[j]);
+            }
+            free(newCentroidsArr);
+            free(centroidsArr);
+            free(head_cord);
+            free_vectors(head_vec);
+            printf("An Error Has Occurred");
+        return 1;
+        }
         newCentroidsArr[i] = (double *)malloc(dimension * sizeof(double));
+        if(newCentroidsArr[i] == NULL){
+            for (j = 0; j < i; j++) {
+                free(centroidsArr[j]);
+                free(newCentroidsArr[j]);
+            }
+            free(centroidsArr[j]);
+            free(newCentroidsArr);
+            free(centroidsArr);
+            free(head_cord);
+            free_vectors(head_vec);
+            printf("An Error Has Occurred");
+        return 1;
+        }
     }
 
     /*initialize centroidsArr*/
@@ -217,6 +282,16 @@ int main(int argc, char **argv) {
    
     /*initialize countArr*/
     countArr = malloc(sizeof(int) * clustersNum);
+    if(countArr == NULL){
+        for (i = 0; i < clustersNum; i++) {
+        free(centroidsArr[i]);
+        free(newCentroidsArr[i]);
+        }
+        free(centroidsArr);
+        free(newCentroidsArr);
+        free_vectors(head_vec);
+        free(head_cord);
+    }
 
     /*main algorithm*/
     for(i = 0; i < itersNum; i++){
